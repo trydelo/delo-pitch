@@ -34,5 +34,5 @@ GitHub.com → HTTPS → Login with a browser.
 
 2. Напиши в чат: **выложи на GitHub Pages**
 
-Агент сделает репозиторий, зальёт `dist/` и пришлёт ссылку  
-`https://<user>.github.io/delo-pitch/`.
+Репозиторий: [trydelo/delo-pitch](https://github.com/trydelo/delo-pitch) (org **Delo**, free).  
+Ссылка: https://trydelo.github.io/delo-pitch/
