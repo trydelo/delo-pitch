@@ -27,24 +27,39 @@ body,
   transition: background 0.35s var(--ease), color 0.35s var(--ease);
 }
 
-.viewport.is-demo {
+.viewport.is-demo,
+.viewport.is-present {
   cursor: default;
 }
 
+.viewport.is-present {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+
 .viewport.is-demo .controls,
-.viewport.is-demo .slide-num {
+.viewport.is-demo .slide-num,
+.viewport.is-present .controls,
+.viewport.is-present .slide-num {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.35s;
 }
 
 .viewport.is-demo:hover .controls,
-.viewport.is-demo:hover .slide-num {
+.viewport.is-demo:hover .slide-num,
+.viewport.is-present:hover .controls,
+.viewport.is-present:hover .slide-num {
   opacity: 1;
   pointer-events: auto;
 }
 
-.viewport.is-demo .controls {
+.viewport.is-demo .controls,
+.viewport.is-present .controls {
   pointer-events: auto;
 }
 

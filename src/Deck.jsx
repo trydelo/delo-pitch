@@ -31,6 +31,11 @@ function readTheme() {
   return 'dark';
 }
 
+/** Native FS shows Chromium “unsupported flag” banner under automation — use CSS mode then. */
+function canUseNativeFullscreen() {
+  return Boolean(document.documentElement.requestFullscreen) && !navigator.webdriver;
+}
+
 function usePrintMode() {
   const [print, setPrint] = useState(() => new URLSearchParams(window.location.search).has('print'));
   useEffect(() => {
@@ -50,6 +55,7 @@ export default function Deck() {
   const [index, setIndex] = useState(() => readHash());
   const [dir, setDir] = useState(1);
   const [demo, setDemo] = useState(() => readDemoFlag());
+  const [present, setPresent] = useState(false);
   const [theme, setTheme] = useState(() => readTheme());
   const print = usePrintMode();
 
@@ -79,26 +85,45 @@ export default function Deck() {
   const next = useCallback(() => go(index + 1), [go, index]);
   const prev = useCallback(() => go(index - 1), [go, index]);
 
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) document.exitFullscreen?.();
-    else document.documentElement.requestFullscreen?.();
+  const setPresentMode = useCallback(async (on) => {
+    setPresent(on);
+    if (!canUseNativeFullscreen()) return;
+    try {
+      if (on && !document.fullscreenElement) await document.documentElement.requestFullscreen();
+      if (!on && document.fullscreenElement) await document.exitFullscreen();
+    } catch {
+      /* CSS present mode remains */
+    }
   }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    void setPresentMode(!present);
+  }, [present, setPresentMode]);
+
+  useEffect(() => {
+    const sync = () => {
+      /* Keep CSS present under automation / after failed native FS; clear only when native FS ends and demo is off */
+      if (!document.fullscreenElement && !demo) setPresent(false);
+    };
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, [demo]);
 
   const enterDemo = useCallback(() => {
     setDemo(true);
     const url = new URL(window.location.href);
     url.searchParams.set('demo', '1');
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash || `#${index + 1}`}`);
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
-  }, [index]);
+    void setPresentMode(true);
+  }, [index, setPresentMode]);
 
   const exitDemo = useCallback(() => {
     setDemo(false);
     const url = new URL(window.location.href);
     url.searchParams.delete('demo');
     history.replaceState(null, '', `${url.pathname}${url.search}${url.hash || `#${index + 1}`}`);
-    if (document.fullscreenElement) document.exitFullscreen?.();
-  }, [index]);
+    void setPresentMode(false);
+  }, [index, setPresentMode]);
 
   const toggleDemo = useCallback(() => {
     if (demo) exitDemo();
@@ -156,6 +181,9 @@ export default function Deck() {
           if (demo) {
             e.preventDefault();
             exitDemo();
+          } else if (present) {
+            e.preventDefault();
+            void setPresentMode(false);
           }
           break;
         default:
@@ -163,7 +191,7 @@ export default function Deck() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [next, prev, go, toggleFullscreen, toggleDemo, exitDemo, demo, toggleTheme]);
+  }, [next, prev, go, toggleFullscreen, toggleDemo, exitDemo, demo, present, setPresentMode, toggleTheme]);
 
   useEffect(() => {
     const target = `#${index + 1}`;
@@ -187,7 +215,7 @@ export default function Deck() {
 
   return (
     <div
-      className={`viewport${print ? ' is-print' : ''}${demo ? ' is-demo' : ''} dir-${dir > 0 ? 'fwd' : 'back'}`}
+      className={`viewport${print ? ' is-print' : ''}${demo ? ' is-demo' : ''}${present ? ' is-present' : ''} dir-${dir > 0 ? 'fwd' : 'back'}`}
       data-slide={index + 1}
       data-theme={theme}
     >
@@ -234,7 +262,13 @@ export default function Deck() {
       </div>
 
       <nav className="controls" aria-label="Навигация">
-        <button type="button" onClick={toggleFullscreen} aria-label="Полный экран (F)">
+        <button
+          type="button"
+          className={present ? 'is-on' : undefined}
+          onClick={toggleFullscreen}
+          aria-label="Полный экран (F)"
+          title="Полный экран (F) · Esc выход"
+        >
           ⛶
         </button>
         <button
